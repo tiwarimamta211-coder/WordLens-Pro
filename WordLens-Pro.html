@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WordLens Pro — Real-Time Word Counter</title>
+  <meta name="description" content="Real-time word counter with character count, paragraph count, reading time, and keyword density analysis."/>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg:        #080c10;
+      --bg2:       #0d1318;
+      --bg3:       #111820;
+      --panel:     #0f1923;
+      --border:    #1e3040;
+      --accent:    #00e5ff;
+      --accent2:   #ff6b35;
+      --accent3:   #39ff14;
+      --text:      #c8d8e8;
+      --text2:     #7a9ab0;
+      --glow:      0 0 18px rgba(0,229,255,.35);
+      --glow2:     0 0 18px rgba(255,107,53,.35);
+      --font-hd:   'Orbitron', sans-serif;
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+      --r:         10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── grid noise overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: relative; z-index: 2;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      padding: 18px 28px;
+      background: linear-gradient(90deg, #020a10 0%, #0a1820 50%, #020a10 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--accent), #006080);
+      border-radius: 8px;
+      display: grid; place-items: center;
+      font-family: var(--font-hd);
+      font-size: 18px; font-weight: 900;
+      color: #000; box-shadow: var(--glow);
+    }
+    .logo-text { font-family: var(--font-hd); font-size: 1.25rem; font-weight: 700; color: var(--accent); letter-spacing: .05em; }
+    .logo-sub  { font-size: .7rem; color: var(--text2); letter-spacing: .12em; text-transform: uppercase; }
+    .header-badge {
+      font-family: var(--font-mono);
+      font-size: .7rem; color: var(--accent3);
+      border: 1px solid var(--accent3);
+      padding: 3px 10px; border-radius: 20px;
+      animation: pulse-green 2.5s ease-in-out infinite;
+    }
+    @keyframes pulse-green { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* ── AD BANNER ── */
+    .ad-banner {
+      position: relative; z-index: 2;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      display: flex; justify-content: center; align-items: center;
+      min-height: 90px;
+    }
+    .ad-placeholder {
+      width: 100%; max-width: 728px; height: 90px;
+      background: var(--bg3);
+      border: 1px dashed var(--border);
+      border-radius: var(--r);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--text2); font-size: .75rem; gap: 4px;
+    }
+    .ad-placeholder span { font-size: .65rem; opacity: .5; }
+
+    /* ── MAIN LAYOUT ── */
+    .container {
+      position: relative; z-index: 1;
+      max-width: 1400px; margin: 0 auto;
+      padding: 24px 20px;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      grid-template-rows: auto auto auto;
+      gap: 20px;
+    }
+    @media(max-width:900px){
+      .container { grid-template-columns: 1fr; }
+      .sidebar { order: -1; }
+    }
+
+    /* ── STAT CARDS ROW ── */
+    .stats-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 14px;
+    }
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px 18px;
+      position: relative; overflow: hidden;
+      transition: border-color .25s, transform .2s;
+    }
+    .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .stat-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-c, var(--accent)), transparent);
+    }
+    .stat-card:nth-child(1){ --accent-c: var(--accent); }
+    .stat-card:nth-child(2){ --accent-c: #bf8fff; }
+    .stat-card:nth-child(3){ --accent-c: var(--accent2); }
+    .stat-card:nth-child(4){ --accent-c: var(--accent3); }
+    .stat-card:nth-child(5){ --accent-c: #ffdd57; }
+    .stat-card:nth-child(6){ --accent-c: #ff5fa0; }
+    .stat-label {
+      font-size: .65rem; text-transform: uppercase; letter-spacing: .12em;
+      color: var(--text2); font-family: var(--font-mono); margin-bottom: 6px;
+    }
+    .stat-value {
+      font-family: var(--font-hd);
+      font-size: 2rem; font-weight: 700;
+      color: var(--accent-c, var(--accent));
+      line-height: 1; transition: color .2s;
+    }
+    .stat-value.bump { animation: bump .3s ease; }
+    @keyframes bump { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+    .stat-sub {
+      font-size: .68rem; color: var(--text2); margin-top: 4px;
+    }
+
+    /* ── EDITOR PANEL ── */
+    .editor-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .editor-toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 12px 16px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+    }
+    .toolbar-label {
+      font-family: var(--font-mono); font-size: .7rem; color: var(--text2);
+      text-transform: uppercase; letter-spacing: .1em; margin-right: auto;
+    }
+    .btn {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 14px; border-radius: 6px;
+      font-size: .75rem; font-family: var(--font-body);
+      cursor: pointer; transition: all .2s;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.danger:hover { border-color: #ff4444; color: #ff4444; }
+    .btn.success { border-color: var(--accent3); color: var(--accent3); }
+
+    #editor {
+      flex: 1;
+      min-height: 320px;
+      padding: 20px;
+      background: transparent;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 1rem; line-height: 1.75;
+      border: none; outline: none;
+      resize: vertical;
+      caret-color: var(--accent);
+    }
+    #editor::placeholder { color: #2a4055; }
+
+    .editor-footer {
+      padding: 8px 16px;
+      background: var(--bg3);
+      border-top: 1px solid var(--border);
+      display: flex; gap: 16px; flex-wrap: wrap;
+      font-size: .7rem; color: var(--text2); font-family: var(--font-mono);
+    }
+    .ef-item span { color: var(--accent); }
+
+    /* ── SIDEBAR ── */
+    .sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 12px 16px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-hd); font-size: .75rem;
+      letter-spacing: .08em; color: var(--accent);
+      text-transform: uppercase;
+    }
+    .panel-head .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent); box-shadow: var(--glow);
+    }
+    .panel-body { padding: 14px 16px; }
+
+    /* Reading time */
+    .read-time-display {
+      text-align: center;
+      padding: 12px 0 6px;
+    }
+    .read-time-big {
+      font-family: var(--font-hd); font-size: 2.5rem; font-weight: 900;
+      color: var(--accent2); line-height: 1;
+    }
+    .read-time-unit { font-size: .75rem; color: var(--text2); margin-top: 4px; letter-spacing: .12em; }
+    .read-speed-note { font-size: .68rem; color: var(--text2); margin-top: 6px; opacity: .7; }
+
+    /* Keyword density */
+    .kw-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+    .kw-list::-webkit-scrollbar { width: 4px; }
+    .kw-list::-webkit-scrollbar-track { background: transparent; }
+    .kw-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .kw-item { display: grid; grid-template-columns: 1fr auto 60px; gap: 8px; align-items: center; }
+    .kw-word {
+      font-family: var(--font-mono); font-size: .8rem; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .kw-count {
+      font-family: var(--font-mono); font-size: .75rem; color: var(--accent2);
+      text-align: right; min-width: 24px;
+    }
+    .kw-bar-wrap {
+      height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden;
+    }
+    .kw-bar {
+      height: 100%; border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width .5s cubic-bezier(.4,0,.2,1);
+    }
+    .kw-empty {
+      color: var(--text2); font-size: .78rem; text-align: center; padding: 20px 0;
+      font-family: var(--font-mono); opacity: .6;
+    }
+
+    /* Progress ring */
+    .progress-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 6px 0;
+    }
+    svg.ring { transform: rotate(-90deg); }
+    .ring-track { fill: none; stroke: var(--bg3); stroke-width: 8; }
+    .ring-fill  { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round;
+      transition: stroke-dashoffset .6s cubic-bezier(.4,0,.2,1); }
+    .ring-label { font-family: var(--font-hd); font-size: .7rem; color: var(--text2); text-align: center; letter-spacing: .1em; }
+
+    /* Ad sidebar */
+    .ad-side {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 8px;
+      min-height: 260px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .ad-side .ad-placeholder { height: 250px; max-width: 300px; }
+
+    /* ── FOOTER AD ── */
+    .footer-ad {
+      position: relative; z-index: 2;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 12px;
+      display: flex; justify-content: center;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative; z-index: 2;
+      text-align: center; padding: 18px;
+      font-size: .72rem; color: var(--text2);
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    /* ── HIGHLIGHT TOGGLE ── */
+    .toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: .75rem; color: var(--text2); }
+    .toggle { width: 36px; height: 20px; background: var(--bg3); border-radius: 10px; position: relative; cursor: pointer; border: 1px solid var(--border); transition: background .2s; }
+    .toggle.on { background: var(--accent); border-color: var(--accent); }
+    .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .2s; }
+    .toggle.on::after { transform: translateX(16px); }
+
+    /* ── Responsive ── */
+    @media(max-width:600px){
+      .stats-row { grid-template-columns: repeat(3, 1fr); }
+      .stat-value { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a class="logo" href="#">
+    <div class="logo-icon">W</div>
+    <div>
+      <div class="logo-text">WordLens</div>
+      <div class="logo-sub">Pro Word Counter</div>
+    </div>
+  </a>
+  <div class="header-badge">● LIVE ANALYSIS</div>
+</header>
+
+<!-- TOP AD (728×90) -->
+<div class="ad-banner">
+  <!-- Replace with your AdSense code -->
+  <!-- <ins class="adsbygoogle" style="display:inline-block;width:728px;height:90px"
+       data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+       data-ad-slot="XXXXXXXXXX"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script> -->
+  <div class="ad-placeholder">
+    📢 Google AdSense — 728×90 Leaderboard
+    <span>Replace this block with your AdSense code</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main class="container">
+
+  <!-- STATS ROW -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Words</div>
+      <div class="stat-value" id="s-words">0</div>
+      <div class="stat-sub">total words</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Characters</div>
+      <div class="stat-value" id="s-chars">0</div>
+      <div class="stat-sub" id="s-chars-no">0 without spaces</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Sentences</div>
+      <div class="stat-value" id="s-sent">0</div>
+      <div class="stat-sub">detected</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Paragraphs</div>
+      <div class="stat-value" id="s-para">0</div>
+      <div class="stat-sub">blocks</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Read Time</div>
+      <div class="stat-value" id="s-read">0<small style="font-size:.9rem">m</small></div>
+      <div class="stat-sub" id="s-read-sub">avg 200 wpm</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Unique Words</div>
+      <div class="stat-value" id="s-unique">0</div>
+      <div class="stat-sub" id="s-vocab">vocab richness</div>
+    </div>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="editor-panel">
+    <div class="editor-toolbar">
+      <span class="toolbar-label">✍ Input Text</span>
+      <div class="toggle-wrap">
+        <div class="toggle" id="highlightToggle" title="Highlight long sentences"></div>
+        <span>Highlight long sentences</span>
+      </div>
+      <button class="btn" onclick="copyStats()">Copy Stats</button>
+      <button class="btn" onclick="downloadTxt()">Download .txt</button>
+      <button class="btn danger" onclick="clearEditor()">Clear</button>
+    </div>
+    <textarea id="editor" placeholder="Start typing or paste your text here...&#10;&#10;WordLens Pro will instantly analyse your content in real time — word count, reading time, keyword density, and much more."></textarea>
+    <div class="editor-footer">
+      <div class="ef-item">Lines: <span id="ef-lines">0</span></div>
+      <div class="ef-item">Avg word length: <span id="ef-awl">0</span></div>
+      <div class="ef-item">Longest word: <span id="ef-lw">—</span></div>
+      <div class="ef-item">Syllables: <span id="ef-syl">0</span></div>
+      <div class="ef-item">Flesch score: <span id="ef-fl">—</span></div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- Reading time detail -->
+    <div class="panel">
+      <div class="panel-head"><div class="dot"></div> Reading Time</div>
+      <div class="panel-body">
+        <div class="read-time-display">
+          <div class="read-time-big" id="rt-big">0<span style="font-size:1.2rem">m</span></div>
+          <div class="read-time-unit">ESTIMATED READ</div>
+          <div class="read-speed-note" id="rt-detail">0 seconds at 200 wpm</div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+          <div style="flex:1;background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:.62rem;color:var(--text2);font-family:var(--font-mono);margin-bottom:4px">SLOW (150wpm)</div>
+            <div style="font-family:var(--font-hd);font-size:1rem;color:#bf8fff" id="rt-slow">0m</div>
+          </div>
+          <div style="flex:1;background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:.62rem;color:var(--text2);font-family:var(--font-mono);margin-bottom:4px">FAST (300wpm)</div>
+            <div style="font-family:var(--font-hd);font-size:1rem;color:var(--accent3)" id="rt-fast">0m</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vocab progress ring -->
+    <div class="panel">
+      <div class="panel-head"><div class="dot" style="background:var(--accent3)"></div> Vocabulary Richness</div>
+      <div class="panel-body">
+        <div class="progress-wrap">
+          <svg class="ring" width="100" height="100" viewBox="0 0 100 100">
+            <circle class="ring-track" cx="50" cy="50" r="42"/>
+            <circle class="ring-fill" id="ring-fill" cx="50" cy="50" r="42"
+              stroke-dasharray="264" stroke-dashoffset="264"/>
+          </svg>
+          <div class="ring-label">Unique / Total ratio<br><span id="ring-pct" style="color:var(--accent);font-family:var(--font-hd);font-size:1.1rem">0%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ad 300×250 -->
+    <div class="ad-side">
+      <!-- <ins class="adsbygoogle" style="display:inline-block;width:300px;height:250px"
+           data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+           data-ad-slot="XXXXXXXXXX"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script> -->
+      <div class="ad-placeholder">
+        📢 Google AdSense — 300×250 Medium Rectangle
+        <span>Replace with your AdSense code</span>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- KEYWORD DENSITY (full width) -->
+  <div class="panel" style="grid-column:1 / -1">
+    <div class="panel-head"><div class="dot" style="background:var(--accent2)"></div> Keyword Density Analysis</div>
+    <div class="panel-body">
+      <div id="kw-container">
+        <div class="kw-empty">Start typing to see keyword density…</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- FOOTER AD (728×90) -->
+<div class="footer-ad">
+  <!-- <ins class="adsbygoogle" style="display:inline-block;width:728px;height:90px"
+       data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+       data-ad-slot="XXXXXXXXXX"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script> -->
+  <div class="ad-placeholder" style="max-width:728px;height:90px">
+    📢 Google AdSense — 728×90 Footer Leaderboard
+    <span>Replace with your AdSense code</span>
+  </div>
+</div>
+
+<footer>
+  WordLens Pro &nbsp;|&nbsp; Real-Time Text Analysis &nbsp;|&nbsp;
+  Built with ❤ &nbsp;|&nbsp; <a href="#">Privacy Policy</a>
+</footer>
+
+<script>
+  /* ═══════════════════════════════════════════════════
+     WORDLENS PRO — Core Analysis Engine
+  ═══════════════════════════════════════════════════ */
+
+  const editor    = document.getElementById('editor');
+  const STOPWORDS = new Set([
+    'the','a','an','and','or','but','in','on','at','to','for','of','with',
+    'is','are','was','were','be','been','being','have','has','had','do',
+    'does','did','will','would','could','should','may','might','shall',
+    'not','no','nor','so','yet','both','either','neither','that','this',
+    'these','those','it','its','i','me','my','we','our','you','your','he',
+    'she','her','him','his','they','their','them','what','which','who',
+    'from','by','about','as','into','through','during','before','after',
+    'above','below','between','each','few','more','most','other','than',
+    'too','very','just','there','here','when','where','how','all','any',
+    'if','then','because','while','although'
+  ]);
+
+  let highlightOn = false;
+  document.getElementById('highlightToggle').addEventListener('click', function(){
+    highlightOn = !highlightOn;
+    this.classList.toggle('on', highlightOn);
+    applyHighlight();
+  });
+
+  function countSyllables(word){
+    word = word.toLowerCase().replace(/[^a-z]/g,'');
+    if(!word.length) return 0;
+    word = word.replace(/(?:[^laeiouy]|ed|[^laeiouy]e)$/, '');
+    word = word.replace(/^y/, '');
+    const m = word.match(/[aeiouy]{1,2}/g);
+    return m ? m.length : 1;
+  }
+
+  function analyse(text){
+    const words     = text.match(/\b\w+\b/g) || [];
+    const wordCount = words.length;
+    const chars     = text.length;
+    const charsNoSp = text.replace(/\s/g,'').length;
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+    const paras     = text.split(/\n\s*\n+/).filter(p => p.trim().length > 0).length || (text.trim().length ? 1 : 0);
+    const lines     = text.split('\n').length;
+
+    // Unique words
+    const lowerWords = words.map(w => w.toLowerCase());
+    const uniqueSet  = new Set(lowerWords);
+    const uniqueCount= uniqueSet.size;
+    const vocabRatio = wordCount > 0 ? Math.round((uniqueCount/wordCount)*100) : 0;
+
+    // Avg word length & longest
+    let totalLen = 0, longest = '';
+    words.forEach(w => {
+      totalLen += w.length;
+      if(w.length > longest.length) longest = w;
+    });
+    const avgWordLen = wordCount > 0 ? (totalLen/wordCount).toFixed(1) : 0;
+
+    // Syllables & Flesch
+    let totalSyl = 0;
+    words.forEach(w => { totalSyl += countSyllables(w); });
+    let flesch = '—';
+    if(wordCount > 0 && sentences > 0){
+      const f = 206.835 - 1.015*(wordCount/sentences) - 84.6*(totalSyl/wordCount);
+      flesch = Math.max(0, Math.min(100, f)).toFixed(1);
+    }
+
+    // Reading times (wpm)
+    const secAvg  = wordCount > 0 ? Math.ceil((wordCount/200)*60) : 0;
+    const secSlow = wordCount > 0 ? Math.ceil((wordCount/150)*60) : 0;
+    const secFast = wordCount > 0 ? Math.ceil((wordCount/300)*60) : 0;
+
+    // Keyword density (top 20, excluding stopwords)
+    const freq = {};
+    lowerWords.forEach(w => {
+      if(w.length >= 3 && !STOPWORDS.has(w)) freq[w] = (freq[w]||0)+1;
+    });
+    const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0,20);
+
+    return {
+      wordCount, chars, charsNoSp, sentences, paras, lines,
+      uniqueCount, vocabRatio,
+      avgWordLen, longest,
+      totalSyl, flesch,
+      secAvg, secSlow, secFast,
+      sorted
+    };
+  }
+
+  function fmtTime(sec){
+    if(sec < 60) return sec + 's';
+    const m = Math.floor(sec/60);
+    const s = sec % 60;
+    return s > 0 ? m + 'm ' + s + 's' : m + 'm';
+  }
+  function fmtTimeShort(sec){
+    const m = Math.round(sec/60);
+    return m > 0 ? m + 'm' : sec + 's';
+  }
+
+  function animVal(id, newVal){
+    const el = document.getElementById(id);
+    if(!el) return;
+    const cur = el.getAttribute('data-val') || '';
+    const str = String(newVal);
+    if(cur !== str){
+      el.setAttribute('data-val', str);
+      el.classList.remove('bump');
+      void el.offsetWidth;
+      el.classList.add('bump');
+    }
+  }
+
+  function render(d){
+    // Stats
+    const setTxt = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+
+    animVal('s-words', d.wordCount);   setTxt('s-words', d.wordCount);
+    animVal('s-chars', d.chars);       setTxt('s-chars', d.chars);
+    setTxt('s-chars-no', d.charsNoSp + ' no spaces');
+    animVal('s-sent', d.sentences);    setTxt('s-sent', d.sentences);
+    animVal('s-para', d.paras);        setTxt('s-para', d.paras);
+    animVal('s-unique', d.uniqueCount); setTxt('s-unique', d.uniqueCount);
+
+    // Read time stat card (show mins)
+    const rdMin = d.secAvg > 0 ? Math.max(1, Math.round(d.secAvg/60)) : 0;
+    document.getElementById('s-read').innerHTML =
+      rdMin + '<small style="font-size:.9rem">m</small>';
+    document.getElementById('s-read-sub').textContent = 'avg 200 wpm';
+
+    // Vocab richness
+    const vr = d.vocabRatio;
+    document.getElementById('s-vocab').textContent = vr + '% unique';
+
+    // Footer stats
+    setTxt('ef-lines', d.lines);
+    setTxt('ef-awl', d.avgWordLen);
+    setTxt('ef-lw', d.longest || '—');
+    setTxt('ef-syl', d.totalSyl);
+    setTxt('ef-fl', d.flesch);
+
+    // Reading time panel
+    document.getElementById('rt-big').innerHTML =
+      fmtTimeShort(d.secAvg).replace(/([ms])/,'<span style="font-size:1.2rem">$1</span>');
+    document.getElementById('rt-detail').textContent =
+      d.secAvg > 0 ? fmtTime(d.secAvg) + ' at 200 wpm' : '0 seconds';
+    document.getElementById('rt-slow').textContent = fmtTimeShort(d.secSlow);
+    document.getElementById('rt-fast').textContent = fmtTimeShort(d.secFast);
+
+    // Vocab ring
+    const pct = d.vocabRatio;
+    const circ = 264;
+    const offset = circ - (pct/100)*circ;
+    document.getElementById('ring-fill').style.strokeDashoffset = offset;
+    document.getElementById('ring-pct').textContent = pct + '%';
+
+    // Keyword density
+    const kc = document.getElementById('kw-container');
+    if(d.sorted.length === 0){
+      kc.innerHTML = '<div class="kw-empty">Start typing to see keyword density…</div>';
+    } else {
+      const maxCnt = d.sorted[0][1];
+      const items = d.sorted.map(([word, cnt]) => {
+        const pct2  = maxCnt > 0 ? ((cnt/maxCnt)*100).toFixed(0) : 0;
+        const dens  = d.wordCount > 0 ? ((cnt/d.wordCount)*100).toFixed(2) : '0.00';
+        return `<div class="kw-item">
+          <div class="kw-word">${word} <span style="font-size:.65rem;color:var(--text2)">(${dens}%)</span></div>
+          <div class="kw-count">${cnt}×</div>
+          <div class="kw-bar-wrap"><div class="kw-bar" style="width:${pct2}%"></div></div>
+        </div>`;
+      }).join('');
+      kc.innerHTML = `<div class="kw-list">${items}</div>`;
+    }
+  }
+
+  function applyHighlight(){
+    // Visual indicator on textarea (can't highlight inside native textarea)
+    editor.style.borderLeft = highlightOn
+      ? '3px solid var(--accent2)'
+      : '3px solid transparent';
+  }
+
+  let rafId;
+  editor.addEventListener('input', () => {
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => {
+      const d = analyse(editor.value);
+      render(d);
+    });
+  });
+
+  /* ── Utilities ── */
+  function clearEditor(){
+    editor.value = '';
+    render(analyse(''));
+    editor.focus();
+  }
+
+  function copyStats(){
+    const d = analyse(editor.value);
+    const txt = `WordLens Pro — Text Analysis Report
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Words         : ${d.wordCount}
+Characters    : ${d.chars}
+Chars (no sp) : ${d.charsNoSp}
+Sentences     : ${d.sentences}
+Paragraphs    : ${d.paras}
+Unique Words  : ${d.uniqueCount}
+Vocab Richness: ${d.vocabRatio}%
+Avg Word Len  : ${d.avgWordLen}
+Syllables     : ${d.totalSyl}
+Flesch Score  : ${d.flesch}
+Read Time     : ${fmtTime(d.secAvg)} (200 wpm)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Top Keywords  :
+${d.sorted.slice(0,10).map(([w,c]) => `  ${w}: ${c}×`).join('\n')}
+`;
+    navigator.clipboard.writeText(txt).then(() => {
+      const btn = document.querySelector('.btn');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.classList.add('success');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('success'); }, 1800);
+    });
+  }
+
+  function downloadTxt(){
+    const d    = analyse(editor.value);
+    const name = 'wordlens-analysis-' + Date.now() + '.txt';
+    const txt  = `WORDLENS PRO REPORT\nGenerated: ${new Date().toLocaleString()}\n\nWords: ${d.wordCount}\nCharacters: ${d.chars}\nSentences: ${d.sentences}\nParagraphs: ${d.paras}\nUnique Words: ${d.uniqueCount}\nVocab Richness: ${d.vocabRatio}%\nRead Time: ${fmtTime(d.secAvg)}\nFlesch Score: ${d.flesch}\n\nTop Keywords:\n` +
+      d.sorted.map(([w,c]) => `${w}: ${c}`).join('\n') +
+      '\n\n--- ORIGINAL TEXT ---\n\n' + editor.value;
+    const blob = new Blob([txt], {type:'text/plain'});
+    const a    = Object.assign(document.createElement('a'), {href: URL.createObjectURL(blob), download: name});
+    a.click(); URL.revokeObjectURL(a.href);
+  }
+
+  // Init
+  render(analyse(''));
+</script>
+</body>
+</html>
